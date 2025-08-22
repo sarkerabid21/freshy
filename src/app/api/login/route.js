@@ -2,34 +2,28 @@ import fs from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
 
-const filePath = path.join(process.cwd(), "data", "users.json");
-
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const { email, password } = body;
 
-    if (!fs.existsSync(filePath)) {
-      return new Response(JSON.stringify({ error: "No users found" }), { status: 404 });
-    }
+    const filePath = path.join(process.cwd(), "app/data/users.json");
+    const users = JSON.parse(fs.readFileSync(filePath, "utf-8"));
 
-    const data = fs.readFileSync(filePath, "utf-8");
-    const users = JSON.parse(data);
-
-    const user = users.find((u) => u.email === email);
+    const user = users.find(u => u.email === email);
 
     if (!user) {
-      return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+      return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401 });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
-      return new Response(JSON.stringify({ error: "Invalid password" }), { status: 401 });
+      return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401 });
     }
 
-    return new Response(JSON.stringify({ message: "Login successful", user }), { status: 200 });
-  } catch (error) {
-    console.error("Login error:", error);
-    return new Response(JSON.stringify({ message: "There is a problem with the server configuration." }), { status: 500 });
+    return new Response(JSON.stringify({ message: "Login successful", user: { email: user.email, phone: user.phone } }), { status: 200 });
+
+  } catch (err) {
+    return new Response(JSON.stringify({ error: "Server error" }), { status: 500 });
   }
 }
